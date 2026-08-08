@@ -4,18 +4,32 @@
 
 # Fancy Text Generator
 
-
 ## 🛠️ Description
-This lets you create attractive text designs using ASCII characters. You input your text and the program transforms it into a large, stylish banner.
-## ⚙️ Languages or Frameworks Used
+Create attractive ASCII text designs and banners. Input your text, choose custom font styles (such as `slant`, `block`, `bubble`, `shadow`, etc.), apply custom terminal colors, and optionally save your banner art to a text file.
 
+## ⚙️ Languages or Frameworks Used
 The program was created with Python3 and pyfiglet.
 
-use following command to install requirements:
-`python -m pip install --upgrade pyfiglet`
+Use the following command to install requirements:
+`pip install -r requirements.txt`
+
 ## 🌟 How to run
 
-`python ./main.py`
-## 🤖 Author
+### Interactive Mode:
+```bash
+python main.py
+```
 
+### CLI Mode:
+```bash
+python main.py -t "Hello World" -f slant -c cyan
+```
+
+### Options:
+- `-t, --text`: Text to convert into ASCII art
+- `-f, --font`: Font style (`standard`, `slant`, `block`, `bubble`, `digital`, `shadow`, `3d-diagonal`, `script`)
+- `-c, --color`: Color (`cyan`, `green`, `yellow`, `red`, `magenta`, `blue`)
+- `-o, --output`: Save ASCII art output to a text file
+
+## 🤖 Author
 [Prajesh Gaikwad](https://github.com/prajesh8484)
