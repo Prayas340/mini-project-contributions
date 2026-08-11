@@ -7,7 +7,7 @@
 <img src="https://media3.giphy.com/media/8QC4kjqN9qDEk/giphy.gif?cid=ecf05e471kl80anlf7s2wx2yz9v5ssu5xxgkbsxq74j9afql&rid=giphy.gif&ct=g">
 
 ## 🛠️ <b> Description </b>
-A short description about the script must be mentioned here.
+Finding Lanes is a Python computer vision script built with OpenCV and NumPy to detect road lane markings in images and video streams. It performs RGB to Grayscale conversion, Gaussian blurring, Canny edge detection, Region of Interest (ROI) polygon masking, Hough Transform line detection, and linear regression slope/intercept averaging to compute and visualize clear lane boundaries.
 
 ## ⚙️ <b>Languages or Frameworks Used
 Run the following command: 

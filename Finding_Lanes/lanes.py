@@ -1,3 +1,4 @@
+import os
 import cv2
 import numpy as np
 
@@ -14,18 +15,24 @@ import numpy as np
 
 def make_coordinate(image, line_parameters):
     slope, intercept = line_parameters
+    if slope == 0:
+        return None
     y1 = image.shape[0]
-    y2 = int(y1*(3/5))
-    x1 = int((y1-intercept)/slope)
-    x2 = int((y2-intercept)/slope)
+    y2 = int(y1 * (3 / 5))
+    x1 = int((y1 - intercept) / slope)
+    x2 = int((y2 - intercept) / slope)
     return np.array([x1, y1, x2, y2])
 
 
 def average_lines_intercept(image, lines):
     left_fit = []
     right_fit = []
+    if lines is None:
+        return None
     for line in lines:
         x1, y1, x2, y2 = line.reshape(4)
+        if x1 == x2:
+            continue
         parameters = np.polyfit((x1, x2), (y1, y2), 1)
         slope = parameters[0]
         intercept = parameters[1]
@@ -33,11 +40,21 @@ def average_lines_intercept(image, lines):
             left_fit.append((slope, intercept))
         else:
             right_fit.append((slope, intercept))
-    left_fit_average = np.average(left_fit, axis=0)
-    right_fit_average = np.average(right_fit, axis=0)
-    left_line = make_coordinate(image, left_fit_average)
-    right_line = make_coordinate(image, right_fit_average)
-    return np.array([left_line, right_line])
+
+    lines_list = []
+    if len(left_fit) > 0:
+        left_fit_average = np.average(left_fit, axis=0)
+        left_line = make_coordinate(image, left_fit_average)
+        if left_line is not None:
+            lines_list.append(left_line)
+
+    if len(right_fit) > 0:
+        right_fit_average = np.average(right_fit, axis=0)
+        right_line = make_coordinate(image, right_fit_average)
+        if right_line is not None:
+            lines_list.append(right_line)
+
+    return np.array(lines_list) if len(lines_list) > 0 else None
 
 
 def canny(image):
@@ -66,13 +83,20 @@ def roi(image):
     return masked_image
 
 
-cap = cv2.VideoCapture("Finding_Lanes/video.mp4")
+dir_path = os.path.dirname(os.path.abspath(__file__))
+video_path = os.path.join(dir_path, "video.mp4")
+if not os.path.exists(video_path):
+    video_path = "Finding_Lanes/video.mp4"
 
-while(cap.isOpened()):
-    _, frame = cap.read()
+cap = cv2.VideoCapture(video_path)
+
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret or frame is None:
+        break
     canny_image = canny(frame)
     cropped_image = roi(canny_image)
-    lines = cv2.HoughLinesP(cropped_image, 2, np.pi/180,
+    lines = cv2.HoughLinesP(cropped_image, 2, np.pi / 180,
                             100, np.array([]), minLineLength=40, maxLineGap=5)
     averaged_lines = average_lines_intercept(frame, lines)
     line_image = display_lines(frame, averaged_lines)
