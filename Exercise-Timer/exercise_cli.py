@@ -1,73 +1,91 @@
 import os
 import sys
 import time as t
+from pathlib import Path
 import click
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-try:
-    import pygame
-    pygame.mixer.init()
-    AUDIO_AVAILABLE = True
-except Exception:
-    AUDIO_AVAILABLE = False
+import pygame
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = Path(__file__).resolve().parent
 
-def play_audio(filename: str, extra_wait_factor: float = 1.0):
-    if not AUDIO_AVAILABLE:
-        return
-    file_path = os.path.join(BASE_DIR, filename)
-    if not os.path.exists(file_path):
-        return
+def load_sounds():
+    """Initializes pygame mixer and preloads audio files using absolute paths."""
+    sounds = {}
     try:
-        sound = pygame.mixer.Sound(file_path)
-        sound.play()
-        wait_ms = int(sound.get_length() * 1000 * extra_wait_factor)
-        pygame.time.wait(wait_ms)
+        pygame.mixer.init()
+        sound_files = {
+            "start": "beep_start.mp3",
+            "stop": "beep_stop.mp3",
+            "finish": "beep_finish.mp3",
+        }
+        for key, filename in sound_files.items():
+            filepath = BASE_DIR / filename
+            if filepath.exists():
+                sounds[key] = pygame.mixer.Sound(str(filepath))
+            else:
+                sounds[key] = None
     except Exception:
-        pass
+        # Fallback gracefully if audio device is unavailable
+        sounds = {"start": None, "stop": None, "finish": None}
+    return sounds
 
-def countdown(seconds: int, prefix: str = ""):
+def play_audio(sound, wait_factor: float = 1.0):
+    """Plays an audio sound and waits for its duration."""
+    if sound is not None:
+        try:
+            sound.play()
+            pygame.time.wait(int(sound.get_length() * 1000 * wait_factor))
+        except Exception:
+            pass
+
+def countdown_timer(seconds: int, stage_label: str):
+    """Displays a live terminal countdown timer."""
     for remaining in range(seconds, 0, -1):
-        sys.stdout.write(f"\r{prefix}{remaining}s left...")
-        sys.stdout.flush()
+        mins, secs = divmod(remaining, 60)
+        print(f"\r  ?? [{stage_label}] {mins:02d}:{secs:02d} remaining...", end="", flush=True)
         t.sleep(1)
-    sys.stdout.write("\r" + " " * (len(prefix) + 15) + "\r")
-    sys.stdout.flush()
+    print("\r" + " " * 50 + "\r", end="", flush=True)
 
 @click.command()
-@click.option('--time', '-t', default=10, type=int, help='Time you want to exercise (seconds)')
-@click.option('--interval', '-i', default=3, type=int, help='Interval rest time between reps (seconds)')
-@click.option('--reps', '-r', default=5, type=int, help='Number of reps to perform')
-def exercise(time: int, interval: int, reps: int):
-    if time <= 0:
-        click.echo("Error: --time must be greater than 0.")
-        return
-    if interval < 0:
-        click.echo("Error: --interval must be non-negative.")
-        return
-    if reps <= 0:
-        click.echo("Error: --reps must be greater than 0.")
-        return
+@click.option('--time', '-t', default=10, type=click.IntRange(min=1), help='Time you want to exercise (in seconds)')
+@click.option('--interval', '-i', default=3, type=click.IntRange(min=1), help='Interval rest time between reps (in seconds)')
+@click.option('--reps', '-r', default=5, type=click.IntRange(min=1), help='Number of reps you want to do')
+@click.option('--prep', '-p', default=3, type=click.IntRange(min=0), help='Preparation time before starting workout (in seconds)')
+def exercise(time: int, interval: int, reps: int, prep: int):
+    """CLI Exercise Timer with audio cues and interval tracking."""
+    sounds = load_sounds()
 
-    total_reps = reps
-    for current_rep in range(1, total_reps + 1):
-        print(f"\n--- Rep {current_rep}/{total_reps} ---")
-        print('Start!')
-        play_audio("beep_start.mp3")
-        countdown(time, prefix="Exercising: ")
-        print('Stop!')
-        play_audio("beep_stop.mp3")
+    print("\n==============================")
+    print("      ??? EXERCISE TIMER       ")
+    print("==============================")
+    print(f"Total Reps: {reps} | Work: {time}s | Rest: {interval}s | Prep: {prep}s\n")
 
-        reps_left = total_reps - current_rep
-        if reps_left > 0:
-            print(f'Reps left: {reps_left}')
-            if interval > 0:
-                print('Resting...')
-                countdown(interval, prefix="Resting: ")
-        else:
-            print("\nFinished!")
-            play_audio("beep_finish.mp3", extra_wait_factor=1.5)
+    try:
+        if prep > 0:
+            print("?? Get Ready!")
+            countdown_timer(prep, "Preparation")
+
+        for current_rep in range(1, reps + 1):
+            print(f"\n--- Rep {current_rep}/{reps} ---")
+            print("?? Start Exercise!")
+            play_audio(sounds.get("start"))
+            countdown_timer(time, f"Rep {current_rep}/{reps} [Work]")
+
+            print("?? Stop!")
+            play_audio(sounds.get("stop"))
+
+            reps_remaining = reps - current_rep
+            if reps_remaining > 0:
+                print(f"? Rest Interval ({reps_remaining} rep{'s' if reps_remaining > 1 else ''} left)")
+                countdown_timer(interval, "Rest Interval")
+            else:
+                print("\n?? Workout Finished! Excellent effort! ??")
+                play_audio(sounds.get("finish"), wait_factor=1.5)
+
+    except KeyboardInterrupt:
+        print("\n\n?? Workout stopped by user. Goodbye!")
+        sys.exit(0)
 
 if __name__ == '__main__':
     exercise()
